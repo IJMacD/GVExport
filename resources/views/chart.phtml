@@ -1,0 +1,45 @@
+<?php use Fisharebest\Webtrees\View; ?>
+
+<h2><?= $title ?></h2>
+
+<p><a href="#" onclick="ta.style.display='block'">Show source</a></p>
+
+<textarea id="gvexport_data" cols="80" rows="15" style="display:none">
+digraph GVExport2 {
+ranksep="0.40 equally"
+nodesep="0.30"
+mclimit="100"
+rankdir="TB"
+pagedir="LT"
+edge [ style=solid, arrowhead=normal arrowtail=none];
+node [ shape=box, style=filled fontsize="10" fontname="sans-serif"];
+<?php foreach ($individuals as $indi): ?>
+<?= $indi->xref() ?> [ color="#606060", fillcolor="<?= $indi->sex() === "M" ? "#ADD8E6" : "#FFB6C1" ?>", label="<?= strip_tags($indi->fullName()) ?>\n* <?= $indi->getBirthYear() ?> \l <?php if ($indi->isDead()): ?>+ <?= $indi->getDeathYear() ?> <?php endif; ?> \l"];
+<?php endforeach; ?>
+<?php foreach ($families as $fam): ?>
+    <?= $fam->xref() ?> [ color="#606060",fillcolor="#FFFFE0", shape=ellipse, style=filled, label="<?= $fam->getMarriageYear() ?: "" ?>\n"];
+<?php endforeach; ?>
+<?php foreach ($links as $link): ?>
+    <?= $link ?>
+
+<?php endforeach; ?>
+}
+</textarea>
+
+<div id="gvexport_svg_output" style="width: 100%; overflow-x: auto">
+    <img src="https://raw.githubusercontent.com/IJMacD/GVExport/gvexport2/resources/img/Spinner-1s-200px.svg" width="200" />
+</div>
+
+<?php View::push('javascript') ?>
+<script src="https://github.com/mdaines/viz.js/releases/download/v2.1.2/viz.js"></script>
+<script src="https://github.com/mdaines/viz.js/releases/download/v2.1.2/lite.render.js"></script>
+<script>
+    const outDiv = document.getElementById('gvexport_svg_output');
+    const ta = document.getElementById('gvexport_data');
+    const viz = new Viz();
+    viz.renderSVGElement(ta.value).then(el => {
+        outDiv.innerHTML = "";
+        outDiv.append(el);
+    }).catch(err => outDiv.innerHTML = `<p style="color:red">${err}</p>`);
+</script>
+<?php View::endpush() ?>
