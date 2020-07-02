@@ -227,6 +227,9 @@ return new class extends AbstractModule implements ModuleCustomInterface, Module
                     foreach ($father->childFamilies() as $fam) {
                         $next[] = $fam;
                     }
+                    foreach ($father->spouseFamilies() as $fam) {
+                        $next[] = $fam;
+                    }
                 }
             }
             
@@ -240,6 +243,9 @@ return new class extends AbstractModule implements ModuleCustomInterface, Module
                 $out->individuals[] = $mother;
                 if ($recursive) {
                     foreach ($mother->childFamilies() as $fam) {
+                        $next[] = $fam;
+                    }
+                    foreach ($mother->spouseFamilies() as $fam) {
                         $next[] = $fam;
                     }
                 }

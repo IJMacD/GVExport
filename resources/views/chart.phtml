@@ -1,4 +1,37 @@
-<?php use Fisharebest\Webtrees\View; ?>
+<?php 
+use Fisharebest\Webtrees\View; 
+use Fisharebest\Webtrees\Date;
+use Fisharebest\Webtrees\Gedcom;
+use Fisharebest\Webtrees\Family;
+?>
+
+<?php
+function formatDate (Date $date) {
+    $prefix = '';
+    if ($date->qual1 === "ABT") $prefix = '±';
+    if ($date->qual1 === "EST") $prefix = '±';
+    if ($date->qual1 === "BEF") $prefix = '<';
+    if ($date->qual1 === "AFT") $prefix = '>';
+    return $prefix . $date->minimumDate()->format('%Y');
+}
+
+function findDivorce (Family $family) {
+    $facts = $family->facts(Gedcom::DIVORCE_EVENTS);
+    return count($facts) > 0 ? $facts[0] : null;
+}
+
+function isDivorced (Family $family) {
+    return findDivorce($family) != null;
+}
+
+function divorceYear (Family $family) {
+    $fact = findDivorce($family);
+
+    if ($fact) return $fact->date()->minimumDate()->format('%Y');
+
+    return null;
+}
+?>
 
 <h2><?= $title ?></h2>
 
@@ -14,10 +47,10 @@ pagedir="LT"
 edge [ style=solid, arrowhead=normal arrowtail=none];
 node [ shape=box, style=filled fontsize="10" fontname="sans-serif"];
 <?php foreach ($individuals as $indi): ?>
-<?= $indi->xref() ?> [ color="#606060", fillcolor="<?= $indi->sex() === "M" ? "#ADD8E6" : "#FFB6C1" ?>", label="<?= strip_tags($indi->fullName()) ?>\n* <?= $indi->getBirthYear() ?> \l <?php if ($indi->isDead()): ?>+ <?= $indi->getDeathYear() ?> <?php endif; ?> \l"];
+<?= $indi->xref() ?> [ color="#606060", fillcolor="<?= $indi->sex() === "M" ? "#ADD8E6" : "#FFB6C1" ?>", label="<?= strip_tags($indi->fullName()) ?>\n* <?= formatDate($indi->getBirthDate()) ?> \l <?php if ($indi->isDead()): ?>✝︎ <?= formatDate($indi->getDeathDate()) ?> <?php endif; ?> \l"];
 <?php endforeach; ?>
 <?php foreach ($families as $fam): ?>
-    <?= $fam->xref() ?> [ color="#606060",fillcolor="#FFFFE0", shape=ellipse, style=filled, label="<?= $fam->getMarriageYear() ?: "" ?>\n"];
+    <?= $fam->xref() ?> [ color="#606060",fillcolor="<?= $fam->getMarriage() ? "#FFFFE0" : "#FFFFFF" ?>", shape="<?= $fam->getMarriage() ? "ellipse" : "circle" ?>", style=filled, label="<?= $fam->getMarriageYear() ?: "" ?><?= isDivorced($fam) ? " - " . divorceYear($fam) : "" ?>\n"];
 <?php endforeach; ?>
 <?php foreach ($links as $link): ?>
     <?= $link ?>
@@ -26,8 +59,8 @@ node [ shape=box, style=filled fontsize="10" fontname="sans-serif"];
 }
 </textarea>
 
-<div id="gvexport_svg_output" style="width: 100%; overflow-x: auto">
-    <img src="https://raw.githubusercontent.com/IJMacD/GVExport/gvexport2/resources/img/Spinner-1s-200px.svg" width="200" />
+<div id="gvexport_svg_output" style="width: 100%; overflow-x: auto; text-align: center;">
+    <img src="https://raw.githubusercontent.com/IJMacD/GVExport/gvexport2/resources/img/Spinner-1s-200px.svg" />
 </div>
 
 <?php View::push('javascript') ?>
@@ -40,6 +73,45 @@ node [ shape=box, style=filled fontsize="10" fontname="sans-serif"];
     viz.renderSVGElement(ta.value).then(el => {
         outDiv.innerHTML = "";
         outDiv.append(el);
+        const p = document.createElement('p');
+        const a = document.createElement('a');
+        a.href = "#";
+        a.onclick = savePNG;
+        a.textContent = "Save PNG";
+        p.append(a);
+        outDiv.append(p);
     }).catch(err => outDiv.innerHTML = `<p style="color:red">${err}</p>`);
+    function savePNG() {
+        const svgEl = outDiv.querySelector('svg');
+        const svg = (new XMLSerializer()).serializeToString(svgEl);
+        const img = new Image();
+        const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8'});
+        const url = URL.createObjectURL(svgBlob);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            const imgUrl = canvas.toDataURL('image/png');
+            triggerDownload(imgUrl);
+        };
+        img.src = url;
+    }
+    function triggerDownload (imgURI) {
+        var evt = new MouseEvent('click', {
+            view: window,
+            bubbles: false,
+            cancelable: true
+        });
+
+        var a = document.createElement('a');
+        a.setAttribute('download', 'gvexport.png');
+        a.setAttribute('href', imgURI);
+        a.setAttribute('target', '_blank');
+
+        a.dispatchEvent(evt);
+    }
 </script>
 <?php View::endpush() ?>
